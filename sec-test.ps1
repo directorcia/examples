@@ -1,28 +1,104 @@
-param(                        
-    [switch]$debug = $false,    ## if -debug parameter don't prompt for input
-    [switch]$noprompt = $false   ## if -noprompt parameter used don't prompt user for input
-)
-<# CIAOPS
-Script provided as is. Use at own risk. No guarantees or warranty provided.
+<#
+.SYNOPSIS
+    Security Testing Script - Validates endpoint protection and security controls
 
-Description - Perform security tests in your environment
-Source - https://github.com/directorcia/Office365/blob/master/sec-test.ps1
-Documentation - https://blog.ciaops.com/2021/06/29/is-security-working-powershell-script/
-Video wlak through - https://www.youtube.com/watch?v=Cq0tj6kfSBo
-Resources - https://demo.wd.microsoft.com/
+.DESCRIPTION
+    This script performs comprehensive security testing to validate that endpoint protection,
+    Microsoft Defender, attack surface reduction (ASR) rules, and other security controls are
+    properly configured and functioning in your environment.
+    
+    The script includes 39 different security tests covering:
+    - Antivirus detection (EICAR test files)
+    - Memory-based malware detection (AMSI)
+    - Credential dumping protection (LSASS)
+    - Office macro protection
+    - Attack Surface Reduction (ASR) rules
+    - Browser-based threats
+    - Script execution controls
+    - Known vulnerability exploitation attempts
+    
+    IMPORTANT: This script intentionally performs malicious-like activities to test security
+    controls. It should ONLY be run in controlled test environments with proper authorization.
+    The script is designed for security professionals and IT administrators.
 
-Prerequisites = Windows 10, OFfice, valid Microsoft 365 login, endpoint security
+.PARAMETER Debug
+    Enables debug mode with transcript logging. Creates a log file (sec-test.txt) in the
+    parent directory containing all script output for review and troubleshooting.
 
+.PARAMETER NoPrompt
+    Runs all 39 tests automatically without user interaction. Without this parameter,
+    a GUI menu allows selection of specific tests to run.
+
+.EXAMPLE
+    .\sec-test.ps1
+    Launches interactive mode with a GUI menu to select specific tests
+
+.EXAMPLE
+    .\sec-test.ps1 -Debug
+    Runs in interactive mode and creates a transcript log file
+
+.EXAMPLE
+    .\sec-test.ps1 -NoPrompt -Debug
+    Runs all tests automatically and logs all output
+
+.NOTES
+    Author: CIAOPS
+    Source: https://github.com/directorcia/Office365/blob/master/sec-test.ps1
+    Documentation: https://blog.ciaops.com/2021/06/29/is-security-working-powershell-script/
+    Video: https://www.youtube.com/watch?v=Cq0tj6kfSBo
+    Resources: https://demo.wd.microsoft.com/
+    
+    Prerequisites:
+    - Windows 10/11 with Microsoft Defender
+    - Microsoft Office (for Office-related tests)
+    - Valid Microsoft 365 account (for authentication tests)
+    - Administrative privileges (for some tests)
+    - Internet connectivity (for downloads)
+    
+    WARNING: This script is provided as-is with no guarantees or warranty.
+    Use at your own risk. Only run in authorized test environments.
+    
+    The script may be flagged by antivirus software. Consider adding the script
+    location to Defender exclusions before running.
+
+.LINK
+    https://blog.ciaops.com/2021/06/29/is-security-working-powershell-script/
 #>
 
+[CmdletBinding()]
+param(                        
+    [Parameter(HelpMessage = "Enable debug mode with transcript logging")]
+    [switch]$Debug,
+    
+    [Parameter(HelpMessage = "Run without user prompts")]
+    [switch]$NoPrompt
+)
+
 #Region Variables
-$systemmessagecolor = "cyan"
-$processmessagecolor = "green"
-$errormessagecolor = "red"
-$warningmessagecolor = "yellow"
+# Define color scheme for consistent output messaging throughout the script
+# These colors help users quickly identify the type of message being displayed
+$systemmessagecolor = "cyan"        # System messages (script start/stop)
+$processmessagecolor = "green"      # Process messages (normal operations, successful tests)
+$errormessagecolor = "red"          # Error messages (failed tests, security gaps)
+$warningmessagecolor = "yellow"     # Warning messages (informational, cautions)
 #EndRegion Variables
 
+<#
+.SYNOPSIS
+    Generates the interactive menu of available security tests
+    
+.DESCRIPTION
+    Creates an array of test objects that will be displayed to the user for selection.
+    Each test validates a specific security control or protection mechanism.
+    
+.PARAMETER mitems
+    Array to populate with test menu items
+    
+.OUTPUTS
+    Array of PSCustomObjects containing test numbers and descriptions
+#>
 function displaymenu($mitems) {
+    # Test 1: Antivirus download protection - validates AV blocks malicious file downloads
     $mitems += [PSCustomObject]@{
         Number = 1;
         Test = "Download EICAR file"
@@ -183,120 +259,178 @@ function displaymenu($mitems) {
     return $mitems
 }
 
+<#
+.SYNOPSIS
+    Test 1: Download EICAR file to validate antivirus download protection
+    
+.DESCRIPTION
+    Attempts to download the EICAR test file (a safe file used to test antivirus software).
+    A properly configured antivirus should block or quarantine this download.
+    
+    EXPECTED RESULT: Download should be blocked or file should be quarantined
+    FAILED TEST: File downloads successfully and can be read
+#>
 function downloadfile() {
-    write-host -ForegroundColor white -backgroundcolor blue "`n--- 1. Download EICAR file ---"
-    $dldetect=$true
-    write-host -foregroundcolor $processmessagecolor "Download eicar.com.txt file to current directory"
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 1. Download EICAR file ---"
+    $dldetect = $true  # Assume detection will occur
+    Write-Host -ForegroundColor $processmessagecolor "Download eicar.com.txt file to current directory"
     if (Test-Path -Path .\eicar.com.txt -PathType Leaf) {
-        write-host -foregroundcolor $processmessagecolor "Detected existing eicar.com.txt file in current directory."
+        Write-Host -ForegroundColor $processmessagecolor "Detected existing eicar.com.txt file in current directory."
         Remove-Item .\eicar1.com.txt
-        write-host -foregroundcolor $processmessagecolor "Delected previous eicar.com.txt version in current directory."
+        Write-Host -ForegroundColor $processmessagecolor "Deleted previous eicar.com.txt version in current directory."
     }
     Invoke-WebRequest -Uri https://secure.eicar.org/eicar.com.txt -OutFile .\eicar.com.txt
-    write-host -foregroundcolor $processmessagecolor "Verify eicar.com.txt file in current directory"
+    Write-Host -ForegroundColor $processmessagecolor "Verify eicar.com.txt file in current directory"
     try {
-        read-content .\eicar.com.txt
+        Get-Content .\eicar.com.txt
     }
     catch {
-        write-host -foregroundcolor $processmessagecolor "eicar.com.txt file download not found - test SUCCEEDED"
-        $dldetect=$false
+        Write-Host -ForegroundColor $processmessagecolor "eicar.com.txt file download not found - test SUCCEEDED"
+        $dldetect = $false
     }
     if ($dldetect) {
-        write-host -foregroundcolor $warningmessagecolor "eicar.com.txt file download found - test FAILED"
+        Write-Host -ForegroundColor $warningmessagecolor "eicar.com.txt file download found - test FAILED"
         $dlexist = $true
         try {
             $dlsize = (Get-ChildItem ".\eicar.com.txt").Length
         }
         catch {
             $dlexist = $false
-            write-host -foregroundcolor $processmessagecolor "eicar.com.txt download not found - test SUCCEEDED"
+            Write-Host -ForegroundColor $processmessagecolor "eicar.com.txt download not found - test SUCCEEDED"
         }
         if ($dlexist) {
             if ($dlsize -ne 0) {
-                write-host -foregroundcolor $errormessagecolor "eicar.com.txt download file length > 0 - test FAILED"
+                Write-Host -ForegroundColor $errormessagecolor "eicar.com.txt download file length > 0 - test FAILED"
             }
         }
     }
 }
-function createfile(){
-    write-host -ForegroundColor white -backgroundcolor blue "`n--- 2. Create EICAR file in current directory ---"
-    set-content .\eicar1.com.txt:EICAR "X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
-    write-host -foregroundcolor $processmessagecolor "Attempt eicar1.com.txt file creation from memory"   
+<#
+.SYNOPSIS
+    Test 2: Create EICAR file using alternate data streams
+    
+.DESCRIPTION
+    Creates an EICAR test file using NTFS alternate data streams (ADS), a technique
+    sometimes used by malware to hide files. This tests if antivirus can detect
+    malicious content written directly to disk using ADS.
+    
+    EXPECTED RESULT: File creation should be blocked, or file should be 0 bytes
+    FAILED TEST: File created with non-zero size
+#>
+function createfile() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 2. Create EICAR file in current directory ---"
+    # Use alternate data stream (ADS) to write EICAR string - tests AV detection of ADS usage
+    Set-Content .\eicar1.com.txt:EICAR "X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+    Write-Host -ForegroundColor $processmessagecolor "Attempt eicar1.com.txt file creation from memory"   
     $crdetect = $false
-    write-host -foregroundcolor $processmessagecolor "Check Windows Defender logs for eicar1 report"
-    $results = get-mpthreatdetection | sort-object initialdetectiontime -Descending
+    Write-Host -ForegroundColor $processmessagecolor "Check Windows Defender logs for eicar1 report"
+    $results = Get-MpThreatDetection | Sort-Object InitialDetectionTime -Descending
     $item = 0
     foreach ($result in $results) {
         if ($result.actionsuccess -and ($result.resources -match "eicar1")) {
             ++$item
-            write-host "`nItem =",$item
-            write-host "Initial detection time =",$result.initialdetectiontime
-            write-host "Process name =",$result.processname
-            write-host -foregroundcolor $processmessagecolor "Resource = ",$result.resources
+            Write-Host "`nItem =" $item
+            Write-Host "Initial detection time =" $result.initialdetectiontime
+            Write-Host "Process name =" $result.processname
+            Write-Host -ForegroundColor $processmessagecolor "Resource = " $result.resources
             $crdetect = $true
         }
     }
     if ($crdetect) {
-        write-host -foregroundcolor $processmessagecolor "`nEICAR file creation detected - test SUCCEEDED"
+        Write-Host -ForegroundColor $processmessagecolor "`nEICAR file creation detected - test SUCCEEDED"
     }
     else {
-        write-host -foregroundcolor $errormessagecolor "`nEICAR file creation not detected - test FAILED"
+        Write-Host -ForegroundColor $errormessagecolor "`nEICAR file creation not detected - test FAILED"
     }
     $crdetect = $true
     try {
-        $fileproperty = get-itemproperty .\eicar1.com.txt
+        $fileproperty = Get-ItemProperty .\eicar1.com.txt
     }
     catch {
-        write-host -foregroundcolor $processmessagecolor "eicar1.com.txt file not detected - test SUCCEEDED"
+        Write-Host -ForegroundColor $processmessagecolor "eicar1.com.txt file not detected - test SUCCEEDED"
         $crdetect = $false
     }
     if ($crdetect) {
         if ($fileproperty.Length -eq 0) {
-            write-host -foregroundcolor $processmessagecolor "eicar1.com.txt detected with file size = 0 - test SUCCEEDED"
-            write-host -foregroundcolor $processmessagecolor "Removing file .\EICAR1.COM.TXT"
+            Write-Host -ForegroundColor $processmessagecolor "eicar1.com.txt detected with file size = 0 - test SUCCEEDED"
+            Write-Host -ForegroundColor $processmessagecolor "Removing file .\EICAR1.COM.TXT"
             Remove-Item .\eicar1.com.txt
         }
         else {
-            write-host -foregroundcolor $errormessagecolor "eicar1.com.txt detected but file size is not 0 - test FAILED"
+            Write-Host -ForegroundColor $errormessagecolor "eicar1.com.txt detected but file size is not 0 - test FAILED"
         }
     }
 }
 
-function inmemorytest(){
-    write-host -ForegroundColor white -backgroundcolor blue "`n--- 3. In memory test ---"
+<#
+.SYNOPSIS
+    Test 3: In-memory malware detection via AMSI
+    
+.DESCRIPTION
+    Tests the Anti-Malware Scan Interface (AMSI), which scans scripts and code
+    running in memory. This test creates a malicious string in memory without
+    touching the disk, simulating fileless malware attacks.
+    
+    The test splits and encodes the AMSI test signature to avoid triggering
+    detection in this script itself, then passes it to a child PowerShell process.
+    
+    EXPECTED RESULT: AMSI blocks the malicious content, error file cannot be read
+    FAILED TEST: Child process executes successfully
+#>
+function inmemorytest() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 3. In memory test ---"
     $memdetect = $false
-    $errorfile = ".\sec-test-$(get-date -f yyyyMMddHHmmss).txt"     # unique output file
-    $s1 = "AMSI Test Sample: 7e72c3ce"             # first half of EICAR string
-    $s2 = "-861b-4339-8740-0ac1484c1386"           # second half of EICAR string
-    $s3=($s1+$s2)                                  # combined EICAR string in one variable
-    $encodedcommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($s3)) # need to encode command so not detected and block in this script
-    write-host -foregroundcolor $processmessagecolor "Launch Powershell child process to output EICAR string to console"
-    Start-Process powershell -ArgumentList "-EncodedCommand $encodedcommand" -wait -WindowStyle Hidden -redirectstandarderror $errorfile
-    write-host -foregroundcolor $processmessagecolor "Attempt to read output file created by child process"
+    $errorfile = ".\sec-test-$(Get-Date -f yyyyMMddHHmmss).txt"     # Unique timestamped output file
+    
+    # Split AMSI test signature into parts to avoid detection in this script
+    $s1 = "AMSI Test Sample: 7e72c3ce"             # First half of AMSI test signature
+    $s2 = "-861b-4339-8740-0ac1484c1386"           # Second half of AMSI test signature
+    $s3 = ($s1 + $s2)                              # Combine at runtime
+    
+    # Base64 encode the command to further obfuscate during script execution
+    $encodedcommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($s3))
+    Write-Host -ForegroundColor $processmessagecolor "Launch Powershell child process to output EICAR string to console"
+    Start-Process powershell -ArgumentList "-EncodedCommand $encodedcommand" -Wait -WindowStyle Hidden -RedirectStandardError $errorfile
+    Write-Host -ForegroundColor $processmessagecolor "Attempt to read output file created by child process"
     try {
-        $result = get-content $errorfile -ErrorAction Stop        # look at child process error output
+        $result = Get-Content $errorfile -ErrorAction Stop        # look at child process error output
     }
-    catch {     # if unable to open file this is because EICAR strng found in there
-        write-host -foregroundcolor $processmessagecolor "In memory malware creation blocked - test SUCCEEDED"
-        write-host -foregroundcolor $processmessagecolor "Removing file $errorfile"
-        remove-item $errorfile      # remove child process error output file
+    catch {     # if unable to open file this is because EICAR string found in there
+        Write-Host -ForegroundColor $processmessagecolor "In memory malware creation blocked - test SUCCEEDED"
+        Write-Host -ForegroundColor $processmessagecolor "Removing file $errorfile"
+        Remove-Item $errorfile      # remove child process error output file
         $memdetect = $true          # set detection state = found
     }
     if (-not $memdetect) {
-        write-host -foregroundcolor $errormessagecolor "In memory test malware creation not block - test FAILED"
-        write-host -ForegroundColor $errormessagecolor "Recommended action = review file $errorfile"
+        Write-Host -ForegroundColor $errormessagecolor "In memory test malware creation not blocked - test FAILED"
+        Write-Host -ForegroundColor $errormessagecolor "Recommended action = review file $errorfile"
     }
 }
 
+<#
+.SYNOPSIS
+    Test 4: LSASS process dump protection
+    
+.DESCRIPTION
+    Attempts to dump the Local Security Authority Subsystem Service (LSASS) process,
+    which contains sensitive credentials in memory. This is a common technique used
+    by attackers to steal credentials (e.g., Mimikatz).
+    
+    Uses SysInternals ProcDump to attempt the dump in both user and admin contexts.
+    Modern security features like Credential Guard and LSA Protection should prevent this.
+    
+    EXPECTED RESULT: Access denied, no dump file created
+    FAILED TEST: Dump file successfully created
+#>
 function processdump() {
-    write-host -ForegroundColor white -backgroundcolor blue "`n--- 4. Attempt LSASS process dump ---"
-    $result = test-path ".\procdump.exe"
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 4. Attempt LSASS process dump ---"
+    $result = Test-Path ".\procdump.exe"
     $procdump = $true
     if (-not $result) {
-        write-host -foregroundcolor $warningmessagecolor "SysInternals procdump.exe not found in current directory"
-        if ($noprompt) {        # if running the script with no prompting
+        Write-Host -ForegroundColor $warningmessagecolor "SysInternals procdump.exe not found in current directory"
+        if (-not $noprompt) {        # if running the script WITH prompting
             do {
-                $result = Read-host -prompt "Download SysInternals procdump (Y/N)?"
+                $result = Read-Host -Prompt "Download SysInternals procdump (Y/N)?"
             } until (-not [string]::isnullorempty($result))
         }
         else {
@@ -1299,112 +1433,135 @@ function notepadmask () {
 
 }
 
-function schtsk () {
-    write-host -ForegroundColor white -backgroundcolor blue "`n--- 39. Create Scheduled Task ---"
+function schtsk() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 39. Create Scheduled Task ---"
     $testflag = $false
     $result = cmd.exe /c 'schtasks /Create /F /SC MINUTE /MO 3 /ST 07:00 /TN CMDTestTask /TR "cmd /c date /T > .\current_date.txt'
     if ($result -match "SUCCESS") {
-        write-host -ForegroundColor $errormessagecolor "Scheduled task created"
+        Write-Host -ForegroundColor $errormessagecolor "Scheduled task created"
         $testflag = $true
         $result = cmd.exe /c 'schtasks /Query /TN CMDTestTask'
         if ($result -match "Ready") {
-            write-host -ForegroundColor $errormessagecolor "Scheduled task found"
+            Write-Host -ForegroundColor $errormessagecolor "Scheduled task found"
             $testflag = $true
         }
     }
     if ($testflag) {
-        write-host -ForegroundColor $errormessagecolor "Test failed - Scheduled task created"
-        write-host -ForegroundColor $processmessagecolor "  Remove scheduled task"
+        Write-Host -ForegroundColor $errormessagecolor "Test failed - Scheduled task created"
+        Write-Host -ForegroundColor $processmessagecolor "  Remove scheduled task"
         $result = cmd.exe /c 'schtasks /Delete /TN CMDTestTask /F'
     }
     else {
-        write-host -ForegroundColor $errormessagecolor "Test succeeded - No Scheduled task created"
+        Write-Host -ForegroundColor $processmessagecolor "Test succeeded - No Scheduled task created"
     }
-    if (test-path -Path ".\current_date.txt") {
-        write-host -ForegroundColor $processmessagecolor "  Remove current_date.txt"
-        remove-item -Path ".\current_date.txt"
+    if (Test-Path -Path ".\current_date.txt") {
+        Write-Host -ForegroundColor $processmessagecolor "  Remove current_date.txt"
+        Remove-Item -Path ".\current_date.txt"
     }
 }
 
-<#          Main                #>
+#Region Main Execution
+<#
+    MAIN SCRIPT EXECUTION
+    
+    This section controls the overall flow of the script:
+    1. Optionally start transcript logging for debug purposes
+    2. Display usage information and parameter options
+    3. Generate the menu of available tests
+    4. Present interactive GUI (unless -NoPrompt) for test selection
+    5. Execute selected tests via switch statement
+    6. Clean up and stop transcript if enabled
+#>
+
 Clear-Host
-if ($debug) {       # If -debug command line option specified record log file in parent
-    write-host -foregroundcolor $processmessagecolor "Create log file ..\sec-test.txt`n"
-    Start-transcript "..\sec-test.txt" | Out-Null                                   ## Log file created in current directory that is overwritten on each run
-}
-write-host -foregroundcolor $systemmessagecolor "Security test script started`n"
-if (-not $debug) {
-    Write-host -foregroundcolor $warningmessagecolor "    * use the -debug parameter on the command line to create an execution log file for this script"
-}
-if (-not $noprompt) {
-    write-host -foregroundcolor $warningmessagecolor  "    * use the -noprompt parameter on the command line to run all options with no prompts"
+
+# Enable transcript logging if Debug parameter is specified
+if ($Debug) {
+    Write-Host -ForegroundColor $processmessagecolor "Create log file ..\sec-test.txt`n"
+    # Transcript captures all console output to a file for later review
+    Start-Transcript "..\sec-test.txt" | Out-Null
 }
 
+Write-Host -ForegroundColor $systemmessagecolor "Security test script started`n"
+if (-not $Debug) {
+    Write-Host -ForegroundColor $warningmessagecolor "    * use the -Debug parameter on the command line to create an execution log file for this script"
+}
+if (-not $NoPrompt) {
+    Write-Host -ForegroundColor $warningmessagecolor "    * use the -NoPrompt parameter on the command line to run all options with no prompts"
+}
+
+# Initialize empty array and populate with all available tests
 $menuitems = @()
-write-host -foregroundcolor $processmessagecolor "`nGenerate test options"
-$menu = displaymenu($menuitems)                             # generate menu to display
-write-host -foregroundcolor $processmessagecolor "Test options generated"
+Write-Host -ForegroundColor $processmessagecolor "`nGenerate test options"
+$menu = displaymenu($menuitems)  # Build the menu of 39 security tests
+Write-Host -ForegroundColor $processmessagecolor "Test options generated"
 
-if (-not $noprompt) {
+# Interactive mode: Display GUI for user to select specific tests
+if (-not $NoPrompt) {
     try {
-        $results = $menu | Sort-Object number | Out-GridView -PassThru -title "Select tests to run (Multiple selections permitted - use CTRL + Select) "
+        # Out-GridView provides a searchable, selectable GUI grid
+        # Users can CTRL+Click to select multiple tests to run
+        $results = $menu | Sort-Object Number | Out-GridView -PassThru -Title "Select tests to run (Multiple selections permitted - use CTRL + Select)"
     }
     catch {
-        write-host -ForegroundColor yellow -backgroundcolor $errormessagecolor "`n[001] - Error getting options`n"
-        if ($debug) {
+        Write-Host -ForegroundColor Yellow -BackgroundColor $errormessagecolor "`n[001] - Error getting options`n"
+        if ($Debug) {
             Stop-Transcript | Out-Null      ## Terminate transcription
         }
         exit 1                              ## Terminate script
     }
 }
+# Non-interactive mode: Run all tests automatically
 else {
-    write-host -foregroundcolor $processmessagecolor "`nRun all options"
-    $results = $menu
+    Write-Host -ForegroundColor $processmessagecolor "`nRun all options"
+    $results = $menu  # Use entire menu (all 39 tests)
 }
 
-switch ($results.number) {
-    1  {downloadfile}
-    2  {createfile}
-    3  {inmemorytest}
-    4  {processdump}
-    5  {mimikatztest}
-    6  {failedlogin}
-    7  {officechildprocess}
-    8  {officecreateexecutable}
-    9  {scriptlaunch}
-    10  {officemacroimport}
-    11  {psexecwmicreation}
-    12  {scriptdlexecute}
-    13  {networkprotection}
-    14  {suspiciouspage}
-    15  {phishpage}
-    16  {downloadblock}
-    17  {exploitblock}
-    18  {maliciousframe}
-    19  {unknownprogram}
-    20  {knownmalicious}
-    21  {pua}
-    22  {blockatfirst}
-    23  {servicescheck}  
-    24  {defenderstatus}
-    25  {mshta}
-    26  {squiblydoo}
-    27  {certutil}
-    28  {wmic}
-    29  {rundll}
-    30  {mimispool}
-    31  {hivevul}
-    32  {mshtmlvul}
-    33  {formshtml}
-    34  {backdoordrop}
-    35  {psfileless}
-    36  {sqldumper}
-    37  {comsvcs}
-    38  {notepadmask}
-    39  {schtsk}
+# Execute the selected test(s) based on test number
+# Each number corresponds to a specific security validation function
+switch ($results.Number) {
+    1  { downloadfile }        # Antivirus download protection
+    2  { createfile }          # Antivirus file creation detection
+    3  { inmemorytest }        # AMSI in-memory scanning
+    4  { processdump }
+    5  { mimikatztest }
+    6  { failedlogin }
+    7  { officechildprocess }
+    8  { officecreateexecutable }
+    9  { scriptlaunch }
+    10 { officemacroimport }
+    11 { psexecwmicreation }
+    12 { scriptdlexecute }
+    13 { networkprotection }
+    14 { suspiciouspage }
+    15 { phishpage }
+    16 { downloadblock }
+    17 { exploitblock }
+    18 { maliciousframe }
+    19 { unknownprogram }
+    20 { knownmalicious }
+    21 { pua }
+    22 { blockatfirst }
+    23 { servicescheck }
+    24 { defenderstatus }
+    25 { mshta }
+    26 { squiblydoo }
+    27 { certutil }
+    28 { wmic }
+    29 { rundll }
+    30 { mimispool }
+    31 { hivevul }
+    32 { mshtmlvul }
+    33 { formshtml }
+    34 { backdoordrop }
+    35 { psfileless }
+    36 { sqldumper }
+    37 { comsvcs }
+    38 { notepadmask }
+    39 { schtsk }
 }
 
-write-host -foregroundcolor $systemmessagecolor "`nSecurity test script completed"
-if ($debug) {
+Write-Host -ForegroundColor $systemmessagecolor "`nSecurity test script completed"
+if ($Debug) {
     Stop-Transcript | Out-Null
 }
