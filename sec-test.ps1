@@ -7,7 +7,7 @@
     Microsoft Defender, attack surface reduction (ASR) rules, and other security controls are
     properly configured and functioning in your environment.
     
-    The script includes 39 different security tests covering:
+    The script includes 60 different security tests covering:
     - Antivirus detection (EICAR test files)
     - Memory-based malware detection (AMSI)
     - Credential dumping protection (LSASS)
@@ -26,7 +26,7 @@
     parent directory containing all script output for review and troubleshooting.
 
 .PARAMETER NoPrompt
-    Runs all 39 tests automatically without user interaction. Without this parameter,
+    Runs all 60 tests automatically without user interaction. Without this parameter,
     a GUI menu allows selection of specific tests to run.
 
 .EXAMPLE
@@ -254,6 +254,90 @@ function displaymenu($mitems) {
     $mitems += [PSCustomObject]@{
         Number = 39;
         Test = "Create scheduled tasks"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 40;
+        Test = "PowerShell Constrained Language Mode"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 41;
+        Test = "PowerShell Logging Configuration"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 42;
+        Test = "Attack Surface Reduction (ASR) Rules Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 43;
+        Test = "Controlled Folder Access (Ransomware Protection)"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 44;
+        Test = "Credential Guard Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 45;
+        Test = "Secure Boot Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 46;
+        Test = "BitLocker Encryption Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 47;
+        Test = "TPM (Trusted Platform Module) Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 48;
+        Test = "Windows Firewall Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 49;
+        Test = "User Account Control (UAC) Level"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 50;
+        Test = "SMB Signing Configuration"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 51;
+        Test = "Local Administrator Accounts"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 52;
+        Test = "RDP Security Configuration"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 53;
+        Test = "Windows Defender Application Guard Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 54;
+        Test = "Virtualization-Based Security (VBS)"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 55;
+        Test = "Windows Update Compliance"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 56;
+        Test = "AppLocker/Application Control Policies"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 57;
+        Test = "Windows Sandbox Availability"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 58;
+        Test = "DNS over HTTPS (DoH) Configuration"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 59;
+        Test = "Windows Security Center Status"
+    }
+    $mitems += [PSCustomObject]@{
+        Number = 60;
+        Test = "Code Integrity Policies"
     }
 
     return $mitems
@@ -1460,6 +1544,948 @@ function schtsk() {
     }
 }
 
+<#
+.SYNOPSIS
+    Test 40: PowerShell Constrained Language Mode verification
+    
+.DESCRIPTION
+    Checks if PowerShell is running in ConstrainedLanguage mode, which restricts
+    access to unsafe .NET methods and COM objects commonly abused by attackers.
+    
+    EXPECTED RESULT: ConstrainedLanguage mode enabled
+    FAILED TEST: FullLanguage mode (unrestricted)
+#>
+function psconstrainedlanguage() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 40. PowerShell Constrained Language Mode ---"
+    $languageMode = $ExecutionContext.SessionState.LanguageMode
+    Write-Host -ForegroundColor $processmessagecolor "Current Language Mode: $languageMode"
+    
+    if ($languageMode -eq "ConstrainedLanguage") {
+        Write-Host -ForegroundColor $processmessagecolor "PowerShell Constrained Language Mode is ENABLED - test SUCCEEDED"
+    }
+    elseif ($languageMode -eq "FullLanguage") {
+        Write-Host -ForegroundColor $warningmessagecolor "PowerShell is in Full Language Mode (unrestricted) - test FAILED"
+        Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable AppLocker or Device Guard to enforce ConstrainedLanguage mode"
+    }
+    else {
+        Write-Host -ForegroundColor $processmessagecolor "Language Mode: $languageMode"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 41: PowerShell logging configuration verification
+    
+.DESCRIPTION
+    Checks if PowerShell security logging features are enabled:
+    - Script Block Logging: Records all script blocks executed
+    - Module Logging: Logs specific module activities
+    - Transcription: Records all PowerShell sessions
+    
+    EXPECTED RESULT: Logging features enabled
+    FAILED TEST: Logging disabled or not configured
+#>
+function pslogging() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 41. PowerShell Logging Configuration ---"
+    
+    # Check Script Block Logging
+    $scriptBlockLogging = Get-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -ErrorAction SilentlyContinue
+    if ($scriptBlockLogging.EnableScriptBlockLogging -eq 1) {
+        Write-Host -ForegroundColor $processmessagecolor "Script Block Logging: ENABLED"
+    }
+    else {
+        Write-Host -ForegroundColor $warningmessagecolor "Script Block Logging: DISABLED"
+    }
+    
+    # Check Module Logging
+    $moduleLogging = Get-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\PowerShell\ModuleLogging" -ErrorAction SilentlyContinue
+    if ($moduleLogging.EnableModuleLogging -eq 1) {
+        Write-Host -ForegroundColor $processmessagecolor "Module Logging: ENABLED"
+    }
+    else {
+        Write-Host -ForegroundColor $warningmessagecolor "Module Logging: DISABLED"
+    }
+    
+    # Check Transcription
+    $transcription = Get-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription" -ErrorAction SilentlyContinue
+    if ($transcription.EnableTranscripting -eq 1) {
+        Write-Host -ForegroundColor $processmessagecolor "Transcription: ENABLED"
+        if ($transcription.OutputDirectory) {
+            Write-Host -ForegroundColor $processmessagecolor "  Output Directory: $($transcription.OutputDirectory)"
+        }
+    }
+    else {
+        Write-Host -ForegroundColor $warningmessagecolor "Transcription: DISABLED"
+    }
+    
+    Write-Host -ForegroundColor $processmessagecolor "`nRecommendation: Enable all PowerShell logging for security monitoring"
+}
+
+<#
+.SYNOPSIS
+    Test 42: Attack Surface Reduction (ASR) Rules status check
+    
+.DESCRIPTION
+    Enumerates which ASR rules are configured and their enforcement mode:
+    - Enabled (block mode)
+    - Audit (monitoring only)
+    - Disabled/Not configured
+    
+    EXPECTED RESULT: ASR rules enabled in block mode
+    FAILED TEST: No ASR rules configured
+#>
+function asrrules() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 42. Attack Surface Reduction Rules Status ---"
+    
+    try {
+        $preferences = Get-MpPreference
+        $asrRules = $preferences.AttackSurfaceReductionRules_Ids
+        $asrActions = $preferences.AttackSurfaceReductionRules_Actions
+        
+        if ($asrRules -and $asrRules.Count -gt 0) {
+            Write-Host -ForegroundColor $processmessagecolor "ASR Rules Configured: $($asrRules.Count)"
+            Write-Host ""
+            
+            $asrRuleNames = @{
+                "BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550" = "Block executable content from email client and webmail"
+                "D4F940AB-401B-4EFC-AADC-AD5F3C50688A" = "Block Office applications from creating child processes"
+                "3B576869-A4EC-4529-8536-B80A7769E899" = "Block Office applications from creating executable content"
+                "75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84" = "Block Office applications from injecting code into other processes"
+                "D3E037E1-3EB8-44C8-A917-57927947596D" = "Block JavaScript or VBScript from launching downloaded executable content"
+                "5BEB7EFE-FD9A-4556-801D-275E5FFC04CC" = "Block execution of potentially obfuscated scripts"
+                "92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B" = "Block Win32 API calls from Office macros"
+                "01443614-cd74-433a-b99e-2ecdc07bfc25" = "Block executable files from running unless they meet prevalence, age, or trusted list criterion"
+                "c1db55ab-c21a-4637-bb3f-a12568109d35" = "Use advanced protection against ransomware"
+                "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2" = "Block credential stealing from LSASS"
+                "d1e49aac-8f56-4280-b9ba-993a6d77406c" = "Block process creations originating from PSExec and WMI commands"
+                "b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4" = "Block untrusted and unsigned processes that run from USB"
+                "26190899-1602-49e8-8b27-eb1d0a1ce869" = "Block Office communication apps from creating child processes"
+                "7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c" = "Block Adobe Reader from creating child processes"
+                "e6db77e5-3df2-4cf1-b95a-636979351e5b" = "Block persistence through WMI event subscription"
+            }
+            
+            for ($i = 0; $i -lt $asrRules.Count; $i++) {
+                $ruleName = $asrRuleNames[$asrRules[$i]]
+                if (-not $ruleName) { $ruleName = $asrRules[$i] }
+                
+                $action = switch ($asrActions[$i]) {
+                    0 { "Disabled" }
+                    1 { "Block" }
+                    2 { "Audit" }
+                    6 { "Warn" }
+                    default { "Unknown ($($asrActions[$i]))" }
+                }
+                
+                $color = if ($asrActions[$i] -eq 1) { $processmessagecolor } elseif ($asrActions[$i] -eq 2) { $warningmessagecolor } else { $errormessagecolor }
+                Write-Host -ForegroundColor $color "  [$action] $ruleName"
+            }
+            Write-Host -ForegroundColor $processmessagecolor "`nTest SUCCEEDED - ASR rules are configured"
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "No ASR rules configured - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Configure ASR rules via Intune or Group Policy"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking ASR rules: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 43: Controlled Folder Access (ransomware protection) status
+    
+.DESCRIPTION
+    Verifies if Controlled Folder Access is enabled, which protects important folders
+    from unauthorized changes by ransomware and other malicious software.
+    
+    EXPECTED RESULT: Controlled Folder Access enabled
+    FAILED TEST: Feature disabled
+#>
+function controlledfolderaccess() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 43. Controlled Folder Access (Ransomware Protection) ---"
+    
+    try {
+        $preferences = Get-MpPreference
+        $cfaStatus = $preferences.EnableControlledFolderAccess
+        
+        switch ($cfaStatus) {
+            0 { 
+                Write-Host -ForegroundColor $errormessagecolor "Controlled Folder Access: DISABLED - test FAILED"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable Controlled Folder Access for ransomware protection"
+            }
+            1 { 
+                Write-Host -ForegroundColor $processmessagecolor "Controlled Folder Access: ENABLED (Block mode) - test SUCCEEDED"
+                $protectedFolders = $preferences.ControlledFolderAccessProtectedFolders
+                if ($protectedFolders) {
+                    Write-Host -ForegroundColor $processmessagecolor "Protected Folders: $($protectedFolders.Count)"
+                }
+            }
+            2 { 
+                Write-Host -ForegroundColor $warningmessagecolor "Controlled Folder Access: AUDIT MODE"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Change to Block mode for active protection"
+            }
+            default {
+                Write-Host -ForegroundColor $processmessagecolor "Controlled Folder Access status: $cfaStatus"
+            }
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking Controlled Folder Access: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 44: Credential Guard status verification
+    
+.DESCRIPTION
+    Checks if Credential Guard is running, which uses virtualization-based security
+    to isolate credentials and protect against credential theft attacks.
+    
+    EXPECTED RESULT: Credential Guard running
+    FAILED TEST: Not configured or not running
+#>
+function credentialguard() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 44. Credential Guard Status ---"
+    
+    try {
+        $deviceGuard = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -ErrorAction SilentlyContinue
+        
+        if ($deviceGuard) {
+            $credGuardStatus = $deviceGuard.SecurityServicesRunning
+            
+            if ($credGuardStatus -contains 1) {
+                Write-Host -ForegroundColor $processmessagecolor "Credential Guard: RUNNING - test SUCCEEDED"
+            }
+            else {
+                Write-Host -ForegroundColor $warningmessagecolor "Credential Guard: NOT RUNNING - test FAILED"
+            }
+            
+            $credGuardConfigured = $deviceGuard.SecurityServicesConfigured
+            if ($credGuardConfigured -contains 1) {
+                Write-Host -ForegroundColor $processmessagecolor "Credential Guard: Configured"
+            }
+            else {
+                Write-Host -ForegroundColor $warningmessagecolor "Credential Guard: Not configured"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable Credential Guard via Group Policy or Intune"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "Unable to query Credential Guard status (may require newer Windows version)"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking Credential Guard: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 45: Secure Boot status verification
+    
+.DESCRIPTION
+    Verifies that UEFI Secure Boot is enabled, which prevents unauthorized
+    operating systems and bootloaders from loading during startup.
+    
+    EXPECTED RESULT: Secure Boot enabled
+    FAILED TEST: Secure Boot disabled or not supported
+#>
+function secureboot() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 45. Secure Boot Status ---"
+    
+    try {
+        $secureBootEnabled = Confirm-SecureBootUEFI
+        
+        if ($secureBootEnabled) {
+            Write-Host -ForegroundColor $processmessagecolor "Secure Boot: ENABLED - test SUCCEEDED"
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "Secure Boot: DISABLED - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable Secure Boot in UEFI/BIOS settings"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $warningmessagecolor "Secure Boot: NOT SUPPORTED or unable to verify (Legacy BIOS mode?)"
+        Write-Host -ForegroundColor $warningmessagecolor "Error: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 46: BitLocker encryption status check
+    
+.DESCRIPTION
+    Verifies that BitLocker drive encryption is enabled on the OS drive,
+    protecting data at rest from unauthorized access.
+    
+    EXPECTED RESULT: BitLocker fully encrypted
+    FAILED TEST: Not encrypted or encryption in progress
+#>
+function bitlocker() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 46. BitLocker Encryption Status ---"
+    
+    try {
+        $bitlockerVolume = Get-BitLockerVolume -MountPoint $env:SystemDrive -ErrorAction Stop
+        
+        Write-Host -ForegroundColor $processmessagecolor "Volume: $($bitlockerVolume.MountPoint)"
+        Write-Host -ForegroundColor $processmessagecolor "Protection Status: $($bitlockerVolume.ProtectionStatus)"
+        Write-Host -ForegroundColor $processmessagecolor "Encryption Percentage: $($bitlockerVolume.EncryptionPercentage)%"
+        Write-Host -ForegroundColor $processmessagecolor "Volume Status: $($bitlockerVolume.VolumeStatus)"
+        
+        if ($bitlockerVolume.ProtectionStatus -eq "On" -and $bitlockerVolume.EncryptionPercentage -eq 100) {
+            Write-Host -ForegroundColor $processmessagecolor "BitLocker: FULLY ENCRYPTED AND PROTECTED - test SUCCEEDED"
+        }
+        elseif ($bitlockerVolume.ProtectionStatus -eq "On") {
+            Write-Host -ForegroundColor $warningmessagecolor "BitLocker: Encryption in progress"
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "BitLocker: NOT PROTECTED - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable BitLocker encryption"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "BitLocker: NOT ENABLED or unable to query - test FAILED"
+        Write-Host -ForegroundColor $warningmessagecolor "Error: $_"
+        Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable BitLocker encryption on system drive"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 47: TPM (Trusted Platform Module) status verification
+    
+.DESCRIPTION
+    Checks if TPM is present, enabled, and activated. TPM is required for
+    many security features including BitLocker, Windows Hello, and Credential Guard.
+    
+    EXPECTED RESULT: TPM present, enabled, and activated
+    FAILED TEST: TPM not present or not enabled
+#>
+function tpmstatus() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 47. TPM (Trusted Platform Module) Status ---"
+    
+    try {
+        $tpm = Get-Tpm
+        
+        Write-Host -ForegroundColor $processmessagecolor "TPM Present: $($tpm.TpmPresent)"
+        Write-Host -ForegroundColor $processmessagecolor "TPM Ready: $($tpm.TpmReady)"
+        Write-Host -ForegroundColor $processmessagecolor "TPM Enabled: $($tpm.TpmEnabled)"
+        Write-Host -ForegroundColor $processmessagecolor "TPM Activated: $($tpm.TpmActivated)"
+        
+        if ($tpm.TpmPresent -and $tpm.TpmReady -and $tpm.TpmEnabled -and $tpm.TpmActivated) {
+            Write-Host -ForegroundColor $processmessagecolor "TPM: FULLY OPERATIONAL - test SUCCEEDED"
+            
+            # Try to get TPM version
+            $tpmVersion = Get-WmiObject -Namespace "root\cimv2\Security\MicrosoftTpm" -Class Win32_Tpm -ErrorAction SilentlyContinue
+            if ($tpmVersion) {
+                $specVersion = $tpmVersion.SpecVersion
+                Write-Host -ForegroundColor $processmessagecolor "TPM Specification Version: $specVersion"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "TPM: NOT FULLY OPERATIONAL - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable TPM in UEFI/BIOS settings"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking TPM status: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 48: Windows Firewall status verification
+    
+.DESCRIPTION
+    Checks that Windows Defender Firewall is enabled for all network profiles
+    (Domain, Private, Public) to protect against network-based attacks.
+    
+    EXPECTED RESULT: Firewall enabled on all profiles
+    FAILED TEST: Firewall disabled on any profile
+#>
+function firewallstatus() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 48. Windows Firewall Status ---"
+    
+    try {
+        $profiles = Get-NetFirewallProfile
+        $allEnabled = $true
+        
+        foreach ($profile in $profiles) {
+            $status = if ($profile.Enabled) { "ENABLED" } else { "DISABLED"; $allEnabled = $false }
+            $color = if ($profile.Enabled) { $processmessagecolor } else { $errormessagecolor }
+            
+            Write-Host -ForegroundColor $color "$($profile.Name) Profile: $status"
+            Write-Host -ForegroundColor $processmessagecolor "  Default Inbound Action: $($profile.DefaultInboundAction)"
+            Write-Host -ForegroundColor $processmessagecolor "  Default Outbound Action: $($profile.DefaultOutboundAction)"
+        }
+        
+        if ($allEnabled) {
+            Write-Host -ForegroundColor $processmessagecolor "`nWindows Firewall: ENABLED on all profiles - test SUCCEEDED"
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "`nWindows Firewall: DISABLED on one or more profiles - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable Windows Firewall on all network profiles"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking firewall status: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 49: User Account Control (UAC) configuration check
+    
+.DESCRIPTION
+    Verifies that UAC is enabled and configured properly to prevent
+    unauthorized elevation of privileges.
+    
+    EXPECTED RESULT: UAC enabled
+    FAILED TEST: UAC disabled
+#>
+function uacstatus() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 49. User Account Control (UAC) Level ---"
+    
+    try {
+        $uacEnabled = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name EnableLUA).EnableLUA
+        $consentPromptBehaviorAdmin = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name ConsentPromptBehaviorAdmin).ConsentPromptBehaviorAdmin
+        
+        if ($uacEnabled -eq 1) {
+            Write-Host -ForegroundColor $processmessagecolor "UAC: ENABLED - test SUCCEEDED"
+            
+            $uacLevel = switch ($consentPromptBehaviorAdmin) {
+                0 { "Never notify" }
+                1 { "Prompt for credentials on the secure desktop" }
+                2 { "Prompt for consent on the secure desktop" }
+                3 { "Prompt for credentials" }
+                4 { "Prompt for consent" }
+                5 { "Prompt for consent for non-Windows binaries" }
+                default { "Unknown ($consentPromptBehaviorAdmin)" }
+            }
+            
+            Write-Host -ForegroundColor $processmessagecolor "UAC Level: $uacLevel"
+            
+            if ($consentPromptBehaviorAdmin -eq 0) {
+                Write-Host -ForegroundColor $warningmessagecolor "Warning: UAC is enabled but set to 'Never notify' (weakest setting)"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "UAC: DISABLED - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable User Account Control"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking UAC status: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 50: SMB signing configuration verification
+    
+.DESCRIPTION
+    Checks if SMB signing is required, which prevents man-in-the-middle
+    and relay attacks against SMB connections.
+    
+    EXPECTED RESULT: SMB signing required
+    FAILED TEST: SMB signing not required
+#>
+function smbsigning() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 50. SMB Signing Configuration ---"
+    
+    try {
+        $smbServerConfig = Get-SmbServerConfiguration
+        
+        Write-Host -ForegroundColor $processmessagecolor "Require Security Signature: $($smbServerConfig.RequireSecuritySignature)"
+        Write-Host -ForegroundColor $processmessagecolor "Enable Security Signature: $($smbServerConfig.EnableSecuritySignature)"
+        
+        if ($smbServerConfig.RequireSecuritySignature) {
+            Write-Host -ForegroundColor $processmessagecolor "SMB Signing: REQUIRED - test SUCCEEDED"
+        }
+        elseif ($smbServerConfig.EnableSecuritySignature) {
+            Write-Host -ForegroundColor $warningmessagecolor "SMB Signing: ENABLED but not required - test partially succeeded"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Set SMB signing to 'Required' for maximum security"
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "SMB Signing: DISABLED - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable and require SMB signing"
+        }
+        
+        # Check SMB Client configuration
+        $smbClientConfig = Get-SmbClientConfiguration
+        Write-Host -ForegroundColor $processmessagecolor "`nSMB Client - Require Security Signature: $($smbClientConfig.RequireSecuritySignature)"
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking SMB signing configuration: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 51: Local administrator accounts enumeration
+    
+.DESCRIPTION
+    Lists all local administrator accounts to identify unauthorized or
+    default accounts that could pose a security risk.
+    
+    EXPECTED RESULT: Only authorized admin accounts present
+    FAILED TEST: Unexpected or default accounts found
+#>
+function localadmins() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 51. Local Administrator Accounts ---"
+    
+    try {
+        $adminGroup = Get-LocalGroup -Name "Administrators" -ErrorAction Stop
+        $admins = Get-LocalGroupMember -Group $adminGroup
+        
+        Write-Host -ForegroundColor $processmessagecolor "Local Administrators ($($admins.Count)):"
+        
+        foreach ($admin in $admins) {
+            Write-Host -ForegroundColor $processmessagecolor "  - $($admin.Name) ($($admin.ObjectClass))"
+        }
+        
+        Write-Host -ForegroundColor $warningmessagecolor "`nRecommendation: Review this list and remove any unauthorized administrator accounts"
+        
+        # Check if built-in Administrator account is enabled
+        $builtinAdmin = Get-LocalUser | Where-Object { $_.SID -like "*-500" }
+        if ($builtinAdmin) {
+            if ($builtinAdmin.Enabled) {
+                Write-Host -ForegroundColor $warningmessagecolor "`nWarning: Built-in Administrator account is ENABLED"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Disable built-in Administrator account when not needed"
+            }
+            else {
+                Write-Host -ForegroundColor $processmessagecolor "`nBuilt-in Administrator account: DISABLED"
+            }
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error enumerating local administrators: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 52: RDP security configuration verification
+    
+.DESCRIPTION
+    Checks RDP security settings including Network Level Authentication (NLA)
+    and encryption levels to ensure secure remote access.
+    
+    EXPECTED RESULT: NLA enabled, strong encryption
+    FAILED TEST: NLA disabled or weak encryption
+#>
+function rdpsecurity() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 52. RDP Security Configuration ---"
+    
+    try {
+        $tsSettings = Get-CimInstance -Namespace "root\cimv2\TerminalServices" -ClassName Win32_TSGeneralSetting -ErrorAction Stop
+        
+        foreach ($setting in $tsSettings) {
+            $nlaEnabled = $setting.UserAuthenticationRequired
+            $encryptionLevel = $setting.MinEncryptionLevel
+            
+            if ($nlaEnabled -eq 1) {
+                Write-Host -ForegroundColor $processmessagecolor "Network Level Authentication (NLA): ENABLED - test SUCCEEDED"
+            }
+            else {
+                Write-Host -ForegroundColor $errormessagecolor "Network Level Authentication (NLA): DISABLED - test FAILED"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable NLA to require authentication before session establishment"
+            }
+            
+            $encLevel = switch ($encryptionLevel) {
+                1 { "Low" }
+                2 { "Client Compatible" }
+                3 { "High" }
+                4 { "FIPS Compliant" }
+                default { "Unknown ($encryptionLevel)" }
+            }
+            
+            Write-Host -ForegroundColor $processmessagecolor "Minimum Encryption Level: $encLevel"
+            
+            if ($encryptionLevel -ge 3) {
+                Write-Host -ForegroundColor $processmessagecolor "Encryption level is adequate"
+            }
+            else {
+                Write-Host -ForegroundColor $warningmessagecolor "Warning: Consider increasing encryption level to High or FIPS Compliant"
+            }
+        }
+        
+        # Check if RDP is enabled
+        $rdpEnabled = (Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections).fDenyTSConnections
+        if ($rdpEnabled -eq 0) {
+            Write-Host -ForegroundColor $processmessagecolor "`nRDP: ENABLED on this system"
+        }
+        else {
+            Write-Host -ForegroundColor $processmessagecolor "`nRDP: DISABLED on this system"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $warningmessagecolor "Unable to query RDP settings: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 53: Windows Defender Application Guard availability check
+    
+.DESCRIPTION
+    Verifies if Windows Defender Application Guard (WDAG) is installed,
+    which provides hardware-based isolation for Microsoft Edge browsing.
+    
+    EXPECTED RESULT: WDAG installed
+    FAILED TEST: WDAG not installed
+#>
+function applicationguard() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 53. Windows Defender Application Guard Status ---"
+    
+    try {
+        $wdag = Get-WindowsOptionalFeature -Online -FeatureName "Windows-Defender-ApplicationGuard" -ErrorAction Stop
+        
+        if ($wdag.State -eq "Enabled") {
+            Write-Host -ForegroundColor $processmessagecolor "Windows Defender Application Guard: ENABLED - test SUCCEEDED"
+        }
+        elseif ($wdag.State -eq "Disabled") {
+            Write-Host -ForegroundColor $warningmessagecolor "Windows Defender Application Guard: DISABLED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable WDAG for hardware-isolated browsing protection"
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "Windows Defender Application Guard: $($wdag.State)"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $warningmessagecolor "Windows Defender Application Guard: NOT AVAILABLE on this edition"
+        Write-Host -ForegroundColor $warningmessagecolor "(Requires Windows 10/11 Enterprise or Pro with hardware virtualization)"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 54: Virtualization-Based Security (VBS) status check
+    
+.DESCRIPTION
+    Verifies if VBS is enabled and checks HVCI/Memory Integrity status.
+    VBS uses hardware virtualization to create isolated regions for security functions.
+    
+    EXPECTED RESULT: VBS enabled with HVCI running
+    FAILED TEST: VBS not enabled
+#>
+function vbssecurity() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 54. Virtualization-Based Security (VBS) ---"
+    
+    try {
+        $deviceGuard = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -ErrorAction SilentlyContinue
+        
+        if ($deviceGuard) {
+            $vbsStatus = $deviceGuard.VirtualizationBasedSecurityStatus
+            
+            switch ($vbsStatus) {
+                0 { Write-Host -ForegroundColor $errormessagecolor "VBS: NOT ENABLED - test FAILED" }
+                1 { Write-Host -ForegroundColor $processmessagecolor "VBS: ENABLED - test SUCCEEDED" }
+                2 { Write-Host -ForegroundColor $processmessagecolor "VBS: ENABLED AND RUNNING - test SUCCEEDED" }
+                default { Write-Host -ForegroundColor $processmessagecolor "VBS Status: $vbsStatus" }
+            }
+            
+            # Check HVCI (Memory Integrity)
+            $hvciStatus = $deviceGuard.SecurityServicesRunning
+            if ($hvciStatus -contains 2) {
+                Write-Host -ForegroundColor $processmessagecolor "HVCI (Memory Integrity): RUNNING"
+            }
+            else {
+                Write-Host -ForegroundColor $warningmessagecolor "HVCI (Memory Integrity): NOT RUNNING"
+            }
+            
+            $hvciConfigured = $deviceGuard.SecurityServicesConfigured
+            if ($hvciConfigured -contains 2) {
+                Write-Host -ForegroundColor $processmessagecolor "HVCI (Memory Integrity): CONFIGURED"
+            }
+            else {
+                Write-Host -ForegroundColor $warningmessagecolor "HVCI (Memory Integrity): NOT CONFIGURED"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable Memory Integrity in Windows Security settings"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "Unable to query VBS status (may require newer Windows version or hardware support)"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking VBS status: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 55: Windows Update compliance check
+    
+.DESCRIPTION
+    Checks for recently installed updates and identifies if security updates are current.
+    Shows the last 5 installed updates and their installation dates.
+    
+    EXPECTED RESULT: Recent updates installed
+    FAILED TEST: No recent updates or many pending updates
+#>
+function windowsupdate() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 55. Windows Update Compliance ---"
+    
+    try {
+        $recentUpdates = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 5
+        
+        if ($recentUpdates) {
+            Write-Host -ForegroundColor $processmessagecolor "Recent Updates (Last 5):"
+            foreach ($update in $recentUpdates) {
+                $installedDate = if ($update.InstalledOn) { $update.InstalledOn.ToString("yyyy-MM-dd") } else { "Unknown" }
+                Write-Host -ForegroundColor $processmessagecolor "  $($update.HotFixID) - Installed: $installedDate - $($update.Description)"
+            }
+            
+            $latestUpdate = $recentUpdates[0]
+            if ($latestUpdate.InstalledOn) {
+                $daysSinceLastUpdate = (Get-Date) - $latestUpdate.InstalledOn
+                Write-Host -ForegroundColor $processmessagecolor "`nLast update was $([math]::Round($daysSinceLastUpdate.TotalDays)) days ago"
+                
+                if ($daysSinceLastUpdate.TotalDays -gt 60) {
+                    Write-Host -ForegroundColor $warningmessagecolor "Warning: Last update was more than 60 days ago"
+                    Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Check for and install pending Windows updates"
+                }
+                else {
+                    Write-Host -ForegroundColor $processmessagecolor "System appears to have recent updates - test SUCCEEDED"
+                }
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "No update information available"
+        }
+        
+        # Check Windows Update service status
+        $wuService = Get-Service -Name "wuauserv" -ErrorAction SilentlyContinue
+        if ($wuService) {
+            Write-Host -ForegroundColor $processmessagecolor "`nWindows Update Service: $($wuService.Status)"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking Windows Update status: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 56: AppLocker policies verification
+    
+.DESCRIPTION
+    Checks if AppLocker application control policies are configured,
+    which restricts which applications can run on the system.
+    
+    EXPECTED RESULT: AppLocker policies configured
+    FAILED TEST: No AppLocker policies found
+#>
+function applockerpolicies() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 56. AppLocker/Application Control Policies ---"
+    
+    try {
+        $appLockerPolicy = Get-AppLockerPolicy -Effective -ErrorAction Stop
+        
+        if ($appLockerPolicy) {
+            $ruleCollections = $appLockerPolicy.RuleCollections
+            
+            if ($ruleCollections -and $ruleCollections.Count -gt 0) {
+                Write-Host -ForegroundColor $processmessagecolor "AppLocker: CONFIGURED - test SUCCEEDED"
+                Write-Host -ForegroundColor $processmessagecolor "Rule Collections:"
+                
+                foreach ($collection in $ruleCollections) {
+                    $ruleCount = if ($collection) { $collection.Count } else { 0 }
+                    Write-Host -ForegroundColor $processmessagecolor "  $($collection.RuleCollectionType): $ruleCount rules"
+                }
+            }
+            else {
+                Write-Host -ForegroundColor $warningmessagecolor "AppLocker: NO POLICIES CONFIGURED - test FAILED"
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Configure AppLocker policies for application control"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "AppLocker: NO POLICIES CONFIGURED - test FAILED"
+        }
+        
+        # Check AppLocker service
+        $appIdService = Get-Service -Name "AppIDSvc" -ErrorAction SilentlyContinue
+        if ($appIdService) {
+            Write-Host -ForegroundColor $processmessagecolor "`nAppLocker Service (AppIDSvc): $($appIdService.Status)"
+            if ($appIdService.Status -ne "Running" -and $ruleCollections.Count -gt 0) {
+                Write-Host -ForegroundColor $warningmessagecolor "Warning: AppLocker policies exist but service is not running"
+            }
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $warningmessagecolor "AppLocker: Not configured or unable to query"
+        Write-Host -ForegroundColor $warningmessagecolor "Note: AppLocker is only available on Enterprise/Education editions"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 57: Windows Sandbox availability check
+    
+.DESCRIPTION
+    Verifies if Windows Sandbox feature is enabled, which provides
+    a lightweight isolated desktop environment for running untrusted software.
+    
+    EXPECTED RESULT: Windows Sandbox enabled
+    FAILED TEST: Feature not available or disabled
+#>
+function windowssandbox() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 57. Windows Sandbox Availability ---"
+    
+    try {
+        $sandbox = Get-WindowsOptionalFeature -Online -FeatureName "Containers-DisposableClientVM" -ErrorAction Stop
+        
+        if ($sandbox.State -eq "Enabled") {
+            Write-Host -ForegroundColor $processmessagecolor "Windows Sandbox: ENABLED - test SUCCEEDED"
+        }
+        elseif ($sandbox.State -eq "Disabled") {
+            Write-Host -ForegroundColor $warningmessagecolor "Windows Sandbox: DISABLED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable Windows Sandbox for testing untrusted software"
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "Windows Sandbox: $($sandbox.State)"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $warningmessagecolor "Windows Sandbox: NOT AVAILABLE on this edition"
+        Write-Host -ForegroundColor $warningmessagecolor "(Requires Windows 10/11 Pro/Enterprise with virtualization enabled)"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 58: DNS over HTTPS (DoH) configuration check
+    
+.DESCRIPTION
+    Checks if DNS over HTTPS is configured to encrypt DNS queries,
+    protecting against DNS spoofing and eavesdropping.
+    
+    EXPECTED RESULT: DoH configured
+    FAILED TEST: No DoH servers configured
+#>
+function dnsovertthps() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 58. DNS over HTTPS (DoH) Configuration ---"
+    
+    try {
+        $dohServers = Get-DnsClientDohServerAddress -ErrorAction Stop
+        
+        if ($dohServers -and $dohServers.Count -gt 0) {
+            Write-Host -ForegroundColor $processmessagecolor "DNS over HTTPS: CONFIGURED - test SUCCEEDED"
+            Write-Host -ForegroundColor $processmessagecolor "DoH Servers ($($dohServers.Count)):"
+            
+            foreach ($server in $dohServers) {
+                Write-Host -ForegroundColor $processmessagecolor "  Server: $($server.ServerAddress)"
+                Write-Host -ForegroundColor $processmessagecolor "  Template: $($server.DohTemplate)"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "DNS over HTTPS: NOT CONFIGURED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Configure DoH for encrypted DNS queries"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $warningmessagecolor "DNS over HTTPS: Unable to query (may require Windows 11 or newer)"
+        Write-Host -ForegroundColor $warningmessagecolor "Error: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 59: Windows Security Center comprehensive status check
+    
+.DESCRIPTION
+    Queries Windows Defender/Security Center for comprehensive status of all
+    protection components including antivirus, firewall, and real-time protection.
+    
+    EXPECTED RESULT: All components healthy and enabled
+    FAILED TEST: Any component disabled or unhealthy
+#>
+function securitycenter() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 59. Windows Security Center Status ---"
+    
+    try {
+        $status = Get-MpComputerStatus
+        
+        Write-Host -ForegroundColor $processmessagecolor "Antivirus:"
+        Write-Host -ForegroundColor $processmessagecolor "  Antivirus Enabled: $($status.AntivirusEnabled)"
+        Write-Host -ForegroundColor $processmessagecolor "  Antivirus Signature Version: $($status.AntivirusSignatureVersion)"
+        Write-Host -ForegroundColor $processmessagecolor "  Real-Time Protection Enabled: $($status.RealTimeProtectionEnabled)"
+        Write-Host -ForegroundColor $processmessagecolor "  Behavior Monitor Enabled: $($status.BehaviorMonitorEnabled)"
+        Write-Host -ForegroundColor $processmessagecolor "  IoA Protection Enabled: $($status.IoavProtectionEnabled)"
+        Write-Host -ForegroundColor $processmessagecolor "  On Access Protection Enabled: $($status.OnAccessProtectionEnabled)"
+        
+        Write-Host -ForegroundColor $processmessagecolor "`nCloud Protection:"
+        Write-Host -ForegroundColor $processmessagecolor "  Cloud-Delivered Protection Enabled: $($status.MAPSReporting -gt 0)"
+        Write-Host -ForegroundColor $processmessagecolor "  Automatic Sample Submission: $($status.SubmitSamplesConsent)"
+        
+        Write-Host -ForegroundColor $processmessagecolor "`nUpdates:"
+        Write-Host -ForegroundColor $processmessagecolor "  Antivirus Signature Last Updated: $($status.AntivirusSignatureLastUpdated)"
+        Write-Host -ForegroundColor $processmessagecolor "  NIS Signature Last Updated: $($status.NISSignatureLastUpdated)"
+        
+        # Overall assessment
+        if ($status.AntivirusEnabled -and $status.RealTimeProtectionEnabled -and $status.BehaviorMonitorEnabled) {
+            Write-Host -ForegroundColor $processmessagecolor "`nWindows Security: ALL KEY PROTECTIONS ENABLED - test SUCCEEDED"
+        }
+        else {
+            Write-Host -ForegroundColor $errormessagecolor "`nWindows Security: SOME PROTECTIONS DISABLED - test FAILED"
+            Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Enable all protection features in Windows Security"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error querying Windows Security Center: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+    Test 60: Code Integrity Policies verification
+    
+.DESCRIPTION
+    Checks if Windows Defender Application Control (WDAC) or Device Guard
+    code integrity policies are enforced.
+    
+    EXPECTED RESULT: Code integrity policies enforced
+    FAILED TEST: No policies enforced
+#>
+function codeintegrity() {
+    Write-Host -ForegroundColor White -BackgroundColor Blue "`n--- 60. Code Integrity Policies ---"
+    
+    try {
+        $deviceGuard = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -ErrorAction SilentlyContinue
+        
+        if ($deviceGuard) {
+            $ciStatus = $deviceGuard.CodeIntegrityPolicyEnforcementStatus
+            
+            switch ($ciStatus) {
+                0 { Write-Host -ForegroundColor $warningmessagecolor "Code Integrity: OFF - test FAILED" }
+                1 { Write-Host -ForegroundColor $warningmessagecolor "Code Integrity: AUDIT MODE" }
+                2 { Write-Host -ForegroundColor $processmessagecolor "Code Integrity: ENFORCED - test SUCCEEDED" }
+                default { Write-Host -ForegroundColor $processmessagecolor "Code Integrity Status: $ciStatus" }
+            }
+            
+            $uefiLock = $deviceGuard.UsermodeCodeIntegrityPolicyEnforcementStatus
+            Write-Host -ForegroundColor $processmessagecolor "User Mode Code Integrity: $uefiLock"
+            
+            if ($ciStatus -eq 0) {
+                Write-Host -ForegroundColor $warningmessagecolor "Recommendation: Consider implementing WDAC policies for application control"
+            }
+        }
+        else {
+            Write-Host -ForegroundColor $warningmessagecolor "Unable to query Code Integrity status (may require newer Windows version)"
+        }
+        
+        # Check for policy files
+        $policyPath = "$env:SystemRoot\System32\CodeIntegrity\SIPolicy.p7b"
+        if (Test-Path $policyPath) {
+            Write-Host -ForegroundColor $processmessagecolor "`nCode Integrity Policy file detected: $policyPath"
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor $errormessagecolor "Error checking Code Integrity policies: $_"
+    }
+}
+
 #Region Main Execution
 <#
     MAIN SCRIPT EXECUTION
@@ -1514,7 +2540,7 @@ if (-not $NoPrompt) {
 # Non-interactive mode: Run all tests automatically
 else {
     Write-Host -ForegroundColor $processmessagecolor "`nRun all options"
-    $results = $menu  # Use entire menu (all 39 tests)
+    $results = $menu  # Use entire menu (all 60 tests)
 }
 
 # Execute the selected test(s) based on test number
@@ -1559,6 +2585,27 @@ switch ($results.Number) {
     37 { comsvcs }
     38 { notepadmask }
     39 { schtsk }
+    40 { psconstrainedlanguage }      # PowerShell Constrained Language Mode
+    41 { pslogging }                   # PowerShell Logging Configuration
+    42 { asrrules }                    # ASR Rules Status
+    43 { controlledfolderaccess }      # Controlled Folder Access
+    44 { credentialguard }             # Credential Guard Status
+    45 { secureboot }                  # Secure Boot Status
+    46 { bitlocker }                   # BitLocker Encryption
+    47 { tpmstatus }                   # TPM Status
+    48 { firewallstatus }              # Windows Firewall
+    49 { uacstatus }                   # UAC Configuration
+    50 { smbsigning }                  # SMB Signing
+    51 { localadmins }                 # Local Administrator Accounts
+    52 { rdpsecurity }                 # RDP Security
+    53 { applicationguard }            # Windows Defender Application Guard
+    54 { vbssecurity }                 # Virtualization-Based Security
+    55 { windowsupdate }               # Windows Update Compliance
+    56 { applockerpolicies }           # AppLocker Policies
+    57 { windowssandbox }              # Windows Sandbox
+    58 { dnsovertthps }                # DNS over HTTPS
+    59 { securitycenter }              # Security Center Status
+    60 { codeintegrity }               # Code Integrity Policies
 }
 
 Write-Host -ForegroundColor $systemmessagecolor "`nSecurity test script completed"
